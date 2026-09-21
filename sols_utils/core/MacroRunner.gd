@@ -14,6 +14,11 @@ func execute(config: MacroConfig) -> void:
 	if not game or str(game.c_sv).is_empty() or int(game.c_u) < 0:
 		return
 
+	if not config.is_valid_for_execution():
+		if game.has_method("popup"):
+			game.popup("Star and Planet names must not be empty.", 3.0)
+		return
+
 	is_running = true
 	registry = NamingRegistry.new()
 	registry.load_registry(str(game.c_sv), int(game.c_u))

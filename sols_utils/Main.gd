@@ -23,11 +23,15 @@ func phase_2() -> void:
 
 	panel = UniversalNamingPanel.new()
 	panel.name = "UniversalNamingPanel"
-	var ui_layer: Node = game.get_node_or_null("UI")
-	if ui_layer:
-		ui_layer.add_child(panel)
+	var panels_container: Node = game.get_node_or_null("Panels/Control")
+	if panels_container:
+		panels_container.add_child(panel)
 	else:
-		game.add_child(panel)
+		var ui_layer: Node = game.get_node_or_null("UI")
+		if ui_layer:
+			ui_layer.add_child(panel)
+		else:
+			game.add_child(panel)
 
 	var hud_layer := game.get_node_or_null("HUD")
 	if hud_layer:

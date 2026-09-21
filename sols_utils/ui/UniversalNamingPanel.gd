@@ -26,6 +26,7 @@ var rename_unconquered_check: CheckBox
 var run_button: Button
 var runner: MacroRunner
 var config: MacroConfig
+var tween: Tween
 
 func _ready() -> void:
 	visible = false

@@ -18,19 +18,24 @@ func execute(config: MacroConfig) -> void:
 	registry = NamingRegistry.new()
 	registry.load_registry(str(game.c_sv), int(game.c_u))
 
+	var cluster_data: Array = game.u_i.get("cluster_data", [])
+	await pre_populate_existing_names(game, cluster_data, tree)
+
+	var rename_clusters: bool = not config.cluster_prefix.strip_edges().is_empty()
+	var rename_galaxies: bool = not config.galaxy_prefix.strip_edges().is_empty()
+	var rename_stars: bool = not config.star_prefix.strip_edges().is_empty()
+	var rename_planets: bool = not config.planet_prefix.strip_edges().is_empty()
+
 	var stats: Dictionary = {"clusters": 0, "galaxies": 0, "systems": 0, "planets": 0}
 	var yield_step: int = 0
 
-	var cluster_data: Array = game.u_i.get("cluster_data", [])
 	for c_id: int in len(cluster_data):
 		var c_i: Dictionary = cluster_data[c_id]
-		if not is_entity_eligible(c_i, config.rename_unconquered, config.rename_prev, is_default_cluster_name(c_i.get("name", ""), c_id)):
-			continue
-
-		var new_cluster_name: String = registry.get_next_name(config.cluster_prefix, "cluster", config.use_roman, config.cluster_enumerate)
-		c_i["name"] = new_cluster_name
-		stats["clusters"] += 1
-		sync_bookmark(game, "cluster", str(c_id), new_cluster_name)
+		if rename_clusters and is_entity_eligible(c_i, config.rename_unconquered, config.rename_prev, is_default_cluster_name(c_i.get("name", ""), c_id)):
+			var new_cluster_name: String = registry.get_next_name(config.cluster_prefix, "cluster", config.use_roman, config.cluster_enumerate)
+			c_i["name"] = new_cluster_name
+			stats["clusters"] += 1
+			sync_bookmark(game, "cluster", str(c_id), new_cluster_name)
 
 	for c_id: int in len(cluster_data):
 		if not game.obj_exists("Clusters", c_id):
@@ -43,7 +48,7 @@ func execute(config: MacroConfig) -> void:
 			var g_id: int = g_i.get("id", g_idx)
 			var galaxy_name: String = g_i.get("name", "")
 
-			if is_entity_eligible(g_i, config.rename_unconquered, config.rename_prev, is_default_galaxy_name(galaxy_name, g_idx)):
+			if rename_galaxies and is_entity_eligible(g_i, config.rename_unconquered, config.rename_prev, is_default_galaxy_name(galaxy_name, g_idx)):
 				galaxy_name = registry.get_next_name(config.galaxy_prefix, "galaxy", config.use_roman, config.galaxy_enumerate)
 				g_i["name"] = galaxy_name
 				cluster_dirty = true
@@ -51,7 +56,8 @@ func execute(config: MacroConfig) -> void:
 				sync_bookmark(game, "galaxy", str(g_id), galaxy_name)
 				if c_id == int(game.c_c) and g_idx < len(game.galaxy_data):
 					game.galaxy_data[g_idx]["name"] = galaxy_name
-					game.galaxy_data_persistent[g_idx]["name"] = galaxy_name
+					if g_idx < len(game.galaxy_data_persistent):
+						game.galaxy_data_persistent[g_idx]["name"] = galaxy_name
 
 			yield_step += 1
 			if yield_step % 25 == 0:
@@ -67,7 +73,7 @@ func execute(config: MacroConfig) -> void:
 				var s_id: int = s_i.get("id", s_idx)
 				var system_name: String = s_i.get("name", "")
 
-				if is_entity_eligible(s_i, config.rename_unconquered, config.rename_prev, is_default_system_name(system_name, s_idx)):
+				if rename_stars and is_entity_eligible(s_i, config.rename_unconquered, config.rename_prev, is_default_system_name(system_name, s_idx)):
 					var sys_suffix: String = ""
 					if config.star_append_galaxy and not galaxy_name.is_empty():
 						var g_label: String = config.galaxy_abbrev if not config.galaxy_abbrev.is_empty() else galaxy_name
@@ -79,15 +85,20 @@ func execute(config: MacroConfig) -> void:
 					sync_bookmark(game, "system", str(s_id), system_name)
 					if g_id == int(game.c_g_g) and s_idx < len(game.system_data):
 						game.system_data[s_idx]["name"] = system_name
-						game.system_data_persistent[s_idx]["name"] = system_name
+						if s_idx < len(game.system_data_persistent):
+							game.system_data_persistent[s_idx]["name"] = system_name
 
 				yield_step += 1
 				if yield_step % 25 == 0:
 					await tree.process_frame
 
-				if not game.obj_exists("Systems", s_id):
+				var planets: Array = []
+				if game.obj_exists("Systems", s_id):
+					planets = game.open_obj("Systems", s_id)
+				elif s_id == int(game.c_s_g) and not game.planet_data.is_empty():
+					planets = game.planet_data.duplicate(true)
+				else:
 					continue
-				var planets: Array = game.open_obj("Systems", s_id)
 				var system_dirty: bool = false
 
 				for p_idx: int in len(planets):
@@ -95,13 +106,18 @@ func execute(config: MacroConfig) -> void:
 					var p_id: int = p_i.get("id", p_idx)
 					var planet_name: String = p_i.get("name", "")
 
-					if is_entity_eligible(p_i, config.rename_unconquered, config.rename_prev, is_default_planet_name(planet_name, p_id)):
+					if rename_planets and is_entity_eligible(p_i, config.rename_unconquered, config.rename_prev, is_default_planet_name(planet_name, p_id)):
 						var pl_numeral: String = registry.get_numeral(p_idx + 1, config.use_roman) if config.planet_enumerate else ""
-						var pl_suffix: String = ""
+						var pl_prefix: String = ""
 						if config.planet_append_star and not system_name.is_empty():
-							var s_label: String = config.star_abbrev if not config.star_abbrev.is_empty() else system_name
-							pl_suffix = s_label + "•"
-						planet_name = pl_suffix + config.planet_prefix + pl_numeral
+							var s_label: String = ""
+							if not config.star_abbrev.is_empty():
+								var star_num: String = registry.get_numeral(s_idx + 1, config.use_roman) if config.star_enumerate else ""
+								s_label = config.star_abbrev + ("•" + star_num if not star_num.is_empty() else "")
+							else:
+								s_label = system_name
+							pl_prefix = s_label + "•"
+						planet_name = pl_prefix + config.planet_prefix + pl_numeral
 						registry.register_existing_name(planet_name)
 						p_i["name"] = planet_name
 						system_dirty = true
@@ -109,7 +125,8 @@ func execute(config: MacroConfig) -> void:
 						sync_bookmark(game, "planet", str(p_id), planet_name)
 						if s_id == int(game.c_s_g) and p_idx < len(game.planet_data):
 							game.planet_data[p_idx]["name"] = planet_name
-							game.planet_data_persistent[p_idx]["name"] = planet_name
+							if p_idx < len(game.planet_data_persistent):
+								game.planet_data_persistent[p_idx]["name"] = planet_name
 
 					yield_step += 1
 					if yield_step % 25 == 0:
@@ -125,12 +142,39 @@ func execute(config: MacroConfig) -> void:
 			save_obj(game, "Clusters", c_id, galaxies)
 
 	registry.save_registry(str(game.c_sv), int(game.c_u))
+	if game.has_method("fn_save_game"):
+		game.fn_save_game()
 	sync_hud_display(game)
 	is_running = false
 
 	var toast: String = "Renamed: %d clusters, %d galaxies, %d systems, %d planets" % [stats.clusters, stats.galaxies, stats.systems, stats.planets]
 	if game.has_method("popup"):
 		game.popup(toast, 3.5)
+
+func pre_populate_existing_names(game: Node, cluster_data: Array, tree: SceneTree) -> void:
+	var yield_cnt: int = 0
+	for c_id: int in len(cluster_data):
+		registry.register_existing_name(cluster_data[c_id].get("name", ""))
+		if not game.obj_exists("Clusters", c_id):
+			continue
+		var galaxies: Array = game.open_obj("Clusters", c_id)
+		for g_i: Dictionary in galaxies:
+			registry.register_existing_name(g_i.get("name", ""))
+			var g_id: int = g_i.get("id", -1)
+			if g_id < 0 or not game.obj_exists("Galaxies", g_id):
+				continue
+			var systems: Array = game.open_obj("Galaxies", g_id)
+			for s_i: Dictionary in systems:
+				registry.register_existing_name(s_i.get("name", ""))
+				var s_id: int = s_i.get("id", -1)
+				if s_id < 0 or not game.obj_exists("Systems", s_id):
+					continue
+				var planets: Array = game.open_obj("Systems", s_id)
+				for p_i: Dictionary in planets:
+					registry.register_existing_name(p_i.get("name", ""))
+				yield_cnt += 1
+				if yield_cnt % 30 == 0:
+					await tree.process_frame
 
 func is_entity_eligible(entity: Dictionary, rename_unconquered: bool, rename_prev: bool, is_default: bool) -> bool:
 	if not rename_unconquered and not entity.get("conquered", false):
@@ -142,12 +186,19 @@ func is_entity_eligible(entity: Dictionary, rename_unconquered: bool, rename_pre
 func is_default_cluster_name(name: String, id: int) -> bool:
 	if name.is_empty() or name == tr("LOCAL_GROUP"):
 		return true
+	var g_group: String = tr("GALAXY_GROUP")
+	var g_cluster: String = tr("GALAXY_CLUSTER")
+	if name == "%s %d" % [g_group, id] or name.begins_with(g_group + " "):
+		return true
+	if name == "%s %d" % [g_cluster, id] or name.begins_with(g_cluster + " "):
+		return true
 	return name == "%s %d" % [tr("CLUSTER"), id] or name.begins_with("Cluster ")
 
 func is_default_galaxy_name(name: String, id: int) -> bool:
 	if name.is_empty() or name == tr("MILKY_WAY"):
 		return true
-	return name == "%s %d" % [tr("GALAXY"), id] or name.begins_with("Galaxy ")
+	var g_prefix: String = tr("GALAXY")
+	return name == "%s %d" % [g_prefix, id] or name.begins_with(g_prefix + " ") or name.begins_with("Galaxy ")
 
 func is_default_system_name(name: String, id: int) -> bool:
 	if name.is_empty():

@@ -23,10 +23,13 @@ const SCHEMA: Array[Dictionary] = [
 	{"type": "check", "label": "Rename unconquered", "key": "rename_unconquered"}
 ]
 
+const MacroRunnerScript = preload("res://sols_utils/core/MacroRunner.gd")
+const MacroConfigScript = preload("res://sols_utils/core/MacroConfig.gd")
+
 @onready var game = get_node_or_null("/root/Game")
 var tween: Tween
-var runner: MacroRunner
-var config: MacroConfig
+var runner: RefCounted
+var config: RefCounted
 var controls: Dictionary = {}
 var run_button: Button
 var arabic_check: CheckBox
@@ -55,8 +58,8 @@ func _ready() -> void:
 	mouse_entered.connect(func(): if game: game.block_scroll = true)
 	mouse_exited.connect(func(): if game: game.block_scroll = false)
 
-	runner = MacroRunner.new()
-	config = MacroConfig.new()
+	runner = MacroRunnerScript.new()
+	config = MacroConfigScript.new()
 	config.load_from_disk()
 
 	build_ui()
@@ -239,3 +242,12 @@ func toggle_panel() -> void:
 		close_panel()
 	else:
 		open_panel()
+
+func _unhandled_input(event: InputEvent) -> void:
+	if not visible:
+		return
+	if event.is_action_pressed("ui_cancel") or (event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE):
+		close_panel()
+		get_viewport().set_input_as_handled()
+	elif Input.is_action_just_released("left_click"):
+		close_panel()

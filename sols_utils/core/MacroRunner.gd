@@ -1,10 +1,12 @@
 class_name MacroRunner
 extends RefCounted
 
-var is_running: bool = false
-var registry: NamingRegistry
+const NamingRegistryScript = preload("res://sols_utils/core/NamingRegistry.gd")
 
-func execute(config: MacroConfig) -> void:
+var is_running: bool = false
+var registry: RefCounted
+
+func execute(config: RefCounted) -> void:
 	if is_running:
 		return
 	var tree := Engine.get_main_loop() as SceneTree
@@ -20,7 +22,7 @@ func execute(config: MacroConfig) -> void:
 		return
 
 	is_running = true
-	registry = NamingRegistry.new()
+	registry = NamingRegistryScript.new()
 	registry.load_registry(str(game.c_sv), int(game.c_u))
 
 	var cluster_data: Array = game.u_i.get("cluster_data", [])

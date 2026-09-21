@@ -41,6 +41,10 @@ func register_existing_name(name: String) -> void:
 	if not name.is_empty():
 		assigned_names[name] = true
 
+func populate_existing_names(names: Array) -> void:
+	for n in names:
+		register_existing_name(str(n))
+
 func has_name(name: String) -> bool:
 	return assigned_names.has(name)
 

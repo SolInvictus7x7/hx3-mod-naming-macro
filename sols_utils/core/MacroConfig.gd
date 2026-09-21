@@ -21,6 +21,9 @@ var use_roman: bool = true
 var rename_prev: bool = false
 var rename_unconquered: bool = false
 
+func is_valid_for_execution() -> bool:
+	return not star_prefix.strip_edges().is_empty() and not planet_prefix.strip_edges().is_empty()
+
 func to_dict() -> Dictionary:
 	return {
 		"star_prefix": star_prefix,

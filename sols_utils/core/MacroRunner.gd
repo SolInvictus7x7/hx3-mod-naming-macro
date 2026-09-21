@@ -116,13 +116,13 @@ func execute(config: MacroConfig) -> void:
 						await tree.process_frame
 
 				if system_dirty:
-					Helper.save_obj("Systems", s_id, planets)
+					save_obj(game, "Systems", s_id, planets)
 
 			if galaxy_dirty:
-				Helper.save_obj("Galaxies", g_id, systems)
+				save_obj(game, "Galaxies", g_id, systems)
 
 		if cluster_dirty:
-			Helper.save_obj("Clusters", c_id, galaxies)
+			save_obj(game, "Clusters", c_id, galaxies)
 
 	registry.save_registry(str(game.c_sv), int(game.c_u))
 	sync_hud_display(game)
@@ -195,3 +195,13 @@ func sync_hud_display(game: Node) -> void:
 			var clusters: Array = game.u_i.get("cluster_data", [])
 			if int(game.c_c) < len(clusters):
 				name_label.text = clusters[int(game.c_c)].get("name", name_label.text)
+
+func save_obj(game: Node, type: String, id: int, data: Array) -> void:
+	var path: String = "user://%s/Univ%s/%s/%d.hx3" % [game.c_sv, game.c_u, type, id]
+	var temp_path: String = path + "~"
+	var file := FileAccess.open(temp_path, FileAccess.WRITE)
+	if file:
+		file.store_var(data)
+		file.close()
+		DirAccess.copy_absolute(temp_path, path)
+		DirAccess.remove_absolute(temp_path)

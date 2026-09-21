@@ -1,11 +1,6 @@
 class_name NamingRegistry
 extends RefCounted
 
-const ONES: Array[String] = ["", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX"]
-const TENS: Array[String] = ["", "X", "XX", "XXX", "XL", "L", "LX", "LXX", "LXXX", "XC"]
-const HUNDREDS: Array[String] = ["", "C", "CC", "CCC", "CD", "D", "DC", "DCC", "DCCC", "CM"]
-const THOUSANDS: Array[String] = ["", "M", "MM", "MMM"]
-
 var counters: Dictionary = {}
 var assigned_names: Dictionary = {}
 
@@ -16,11 +11,31 @@ func get_numeral(num: int, use_roman: bool) -> String:
 		return ""
 	if num > 3999:
 		return str(num)
+
 	var m: int = int(num / 1000.0) % 10
 	var c: int = int(num / 100.0) % 10
 	var x: int = int(num / 10.0) % 10
 	var i: int = num % 10
-	return THOUSANDS[m] + HUNDREDS[c] + TENS[x] + ONES[i]
+
+	return "M".repeat(m) \
+		+ _digit_to_roman(c, "C", "D", "M") \
+		+ _digit_to_roman(x, "X", "L", "C") \
+		+ _digit_to_roman(i, "I", "V", "X")
+
+func _digit_to_roman(d: int, unit: String, half: String, next: String) -> String:
+	match d:
+		1, 2, 3:
+			return unit.repeat(d)
+		4:
+			return unit + half
+		5:
+			return half
+		6, 7, 8:
+			return half + unit.repeat(d - 5)
+		9:
+			return unit + next
+		_:
+			return ""
 
 func register_existing_name(name: String) -> void:
 	if not name.is_empty():

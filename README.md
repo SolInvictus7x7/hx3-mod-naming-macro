@@ -14,7 +14,7 @@ Sol's Utils provides a centralized Universal Naming Scheme interface that automa
 
 ## 2. Installation
 
-Simply copy the .zip file into your HX3 mod folder. You can open the folder from the 'mods' tab in game.
+Simply copy the .zip file from the releases tab into your HX3 mod folder. You can open the folder from the 'mods' tab in game.
 
 ---
 

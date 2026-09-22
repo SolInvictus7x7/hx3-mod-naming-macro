@@ -1,6 +1,6 @@
 # Sol's Utils: Universal Naming Scheme
 
-A non-invasive automation mod for Helixteus 3 (HX3) that introduces systematic, customizable, and automated renaming for celestial entities across clusters, galaxies, star systems, and planets.
+A non-invasive automation mod for [Helixteus 3](https://github.com/Apple0726/helixteus-3/tree/master) that introduces systematic, customizable, and automated renaming for celestial entities across clusters, galaxies, star systems, and planets.
 
 ---
 

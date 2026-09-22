@@ -2,7 +2,7 @@ extends RefCounted
 
 var mod_info: Dictionary = {
 	"name": "Sol's Utils",
-	"version": "0.1.0",
+	"version": "0.2.0",
 	"author": "Sol",
 	"description": "Utility features for Helixteus 3."
 }

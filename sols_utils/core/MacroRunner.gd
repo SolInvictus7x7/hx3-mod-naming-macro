@@ -23,6 +23,7 @@ func execute(config: RefCounted) -> void:
 		return
 
 	is_running = true
+	var timer_state: Dictionary = _suspend_timers(game)
 	registry = NamingRegistryScript.new()
 	registry.load_registry(str(game.c_sv), int(game.c_u))
 
@@ -53,8 +54,8 @@ func execute(config: RefCounted) -> void:
 
 		for g_idx: int in len(galaxies):
 			var g_i: Dictionary = galaxies[g_idx]
-			var g_id: int = g_i.get("id", g_idx)
-			var galaxy_name: String = g_i.get("name", "")
+			var g_id: int = int(g_i.get("id", g_idx))
+			var galaxy_name: String = get_safe_name(g_i)
 
 			if rename_galaxies and is_entity_eligible(g_i, config.rename_unconquered, config.rename_prev, is_default_galaxy_name(galaxy_name, g_idx)):
 				galaxy_name = registry.get_next_name(config.galaxy_prefix, "galaxy", config.use_roman, config.galaxy_enumerate)
@@ -64,8 +65,6 @@ func execute(config: RefCounted) -> void:
 				sync_bookmark(game, "galaxy", str(g_id), galaxy_name)
 				if c_id == int(game.c_c) and g_idx < len(game.galaxy_data):
 					game.galaxy_data[g_idx]["name"] = galaxy_name
-					if g_idx < len(game.galaxy_data_persistent):
-						game.galaxy_data_persistent[g_idx]["name"] = galaxy_name
 
 			yield_step += 1
 			if yield_step % 25 == 0:
@@ -78,14 +77,14 @@ func execute(config: RefCounted) -> void:
 
 			for s_idx: int in len(systems):
 				var s_i: Dictionary = systems[s_idx]
-				var s_id: int = s_i.get("id", s_idx)
-				var system_name: String = s_i.get("name", "")
+				var s_id: int = int(s_i.get("id", s_idx))
+				var system_name: String = get_safe_name(s_i)
 
 				if rename_stars and is_entity_eligible(s_i, config.rename_unconquered, config.rename_prev, is_default_system_name(system_name, s_idx)):
 					var sys_suffix: String = ""
 					if config.star_append_galaxy and not galaxy_name.is_empty():
 						var g_label: String = config.galaxy_abbrev if not config.galaxy_abbrev.is_empty() else galaxy_name
-						sys_suffix = "•" + g_label
+						sys_suffix = g_label
 					system_name = registry.get_next_name(config.star_prefix, "system", config.use_roman, config.star_enumerate, sys_suffix)
 					s_i["name"] = system_name
 					galaxy_dirty = true
@@ -93,8 +92,6 @@ func execute(config: RefCounted) -> void:
 					sync_bookmark(game, "system", str(s_id), system_name)
 					if g_id == int(game.c_g_g) and s_idx < len(game.system_data):
 						game.system_data[s_idx]["name"] = system_name
-						if s_idx < len(game.system_data_persistent):
-							game.system_data_persistent[s_idx]["name"] = system_name
 
 				yield_step += 1
 				if yield_step % 25 == 0:
@@ -111,8 +108,8 @@ func execute(config: RefCounted) -> void:
 
 				for p_idx: int in len(planets):
 					var p_i: Dictionary = planets[p_idx]
-					var p_id: int = p_i.get("id", p_idx)
-					var planet_name: String = p_i.get("name", "")
+					var p_id: int = int(p_i.get("id", p_idx))
+					var planet_name: String = get_safe_name(p_i)
 
 					if rename_planets and is_entity_eligible(p_i, config.rename_unconquered, config.rename_prev, is_default_planet_name(planet_name, p_id)):
 						var pl_numeral: String = registry.get_numeral(p_idx + 1, config.use_roman) if config.planet_enumerate else ""
@@ -121,10 +118,10 @@ func execute(config: RefCounted) -> void:
 							var s_label: String = ""
 							if not config.star_abbrev.is_empty():
 								var star_num: String = registry.get_numeral(s_idx + 1, config.use_roman) if config.star_enumerate else ""
-								s_label = config.star_abbrev + ("•" + star_num if not star_num.is_empty() else "")
+								s_label = config.star_abbrev + star_num
 							else:
 								s_label = system_name
-							pl_prefix = s_label + "•"
+							pl_prefix = s_label
 						planet_name = pl_prefix + config.planet_prefix + pl_numeral
 						registry.register_existing_name(planet_name)
 						p_i["name"] = planet_name
@@ -133,8 +130,6 @@ func execute(config: RefCounted) -> void:
 						sync_bookmark(game, "planet", str(p_id), planet_name)
 						if s_id == int(game.c_s_g) and p_idx < len(game.planet_data):
 							game.planet_data[p_idx]["name"] = planet_name
-							if p_idx < len(game.planet_data_persistent):
-								game.planet_data_persistent[p_idx]["name"] = planet_name
 
 					yield_step += 1
 					if yield_step % 25 == 0:
@@ -153,33 +148,38 @@ func execute(config: RefCounted) -> void:
 	if game.has_method("fn_save_game"):
 		game.fn_save_game()
 	sync_hud_display(game)
+	_restore_timers(timer_state)
 	is_running = false
 
 	var toast: String = "Renamed: %d clusters, %d galaxies, %d systems, %d planets" % [stats.clusters, stats.galaxies, stats.systems, stats.planets]
 	if game.has_method("popup"):
 		game.popup(toast, 3.5)
 
+func get_safe_name(entity: Dictionary) -> String:
+	var val: Variant = entity.get("name", "")
+	return str(val) if val != null else ""
+
 func pre_populate_existing_names(game: Node, cluster_data: Array, tree: SceneTree) -> void:
 	var yield_cnt: int = 0
 	for c_id: int in len(cluster_data):
-		registry.register_existing_name(cluster_data[c_id].get("name", ""))
+		registry.register_existing_name(get_safe_name(cluster_data[c_id]))
 		if not SaveIOScript.sols_obj_exists(game, "Clusters", c_id):
 			continue
 		var galaxies: Array = SaveIOScript.load_obj(game, "Clusters", c_id)
 		for g_i: Dictionary in galaxies:
-			registry.register_existing_name(g_i.get("name", ""))
-			var g_id: int = g_i.get("id", -1)
+			registry.register_existing_name(get_safe_name(g_i))
+			var g_id: int = int(g_i.get("id", -1))
 			if g_id < 0 or not SaveIOScript.sols_obj_exists(game, "Galaxies", g_id):
 				continue
 			var systems: Array = SaveIOScript.load_obj(game, "Galaxies", g_id)
 			for s_i: Dictionary in systems:
-				registry.register_existing_name(s_i.get("name", ""))
-				var s_id: int = s_i.get("id", -1)
+				registry.register_existing_name(get_safe_name(s_i))
+				var s_id: int = int(s_i.get("id", -1))
 				if s_id < 0 or not SaveIOScript.sols_obj_exists(game, "Systems", s_id):
 					continue
 				var planets: Array = SaveIOScript.load_obj(game, "Systems", s_id)
 				for p_i: Dictionary in planets:
-					registry.register_existing_name(p_i.get("name", ""))
+					registry.register_existing_name(get_safe_name(p_i))
 				yield_cnt += 1
 				if yield_cnt % 30 == 0:
 					await tree.process_frame
@@ -254,3 +254,25 @@ func sync_hud_display(game: Node) -> void:
 			var clusters: Array = game.u_i.get("cluster_data", [])
 			if int(game.c_c) < len(clusters):
 				name_label.text = clusters[int(game.c_c)].get("name", name_label.text)
+
+func _suspend_timers(game: Node) -> Dictionary:
+	var state: Dictionary = {}
+	var mm_timer: Timer = game.get_node_or_null("MMTimer")
+	if mm_timer:
+		state["mm_timer"] = mm_timer
+		state["mm_paused"] = mm_timer.paused
+		mm_timer.paused = true
+	var autosave_timer: Timer = game.get_node_or_null("Autosave")
+	if autosave_timer:
+		state["autosave_timer"] = autosave_timer
+		state["autosave_paused"] = autosave_timer.paused
+		autosave_timer.paused = true
+	return state
+
+func _restore_timers(state: Dictionary) -> void:
+	var mm_timer: Timer = state.get("mm_timer", null)
+	if mm_timer and is_instance_valid(mm_timer):
+		mm_timer.paused = state.get("mm_paused", false)
+	var autosave_timer: Timer = state.get("autosave_timer", null)
+	if autosave_timer and is_instance_valid(autosave_timer):
+		autosave_timer.paused = state.get("autosave_paused", false)

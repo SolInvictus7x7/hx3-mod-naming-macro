@@ -54,3 +54,14 @@ Processing an entire universe consisting of dozens of clusters, hundreds of gala
    * Roman numeral formatting accurately maps integer indices from 1 up to 3999 (`I` through `MMMCMXCIX`), with automatic fallback to Arabic numbers beyond that range.
 6. **Selective Entity Filtering:**
    * Entities can be filtered based on conquest status (`conquered`) and prior custom names, ensuring that unconquered territories or previously customized systems remain untouched unless explicitly enabled in the configuration.
+
+## 4. Contributing
+
+Contributions, bug reports, and feature suggestions are totally welcome! Whether you have encountered a bug, UX gripe, or want to propose an optimization, feel free to open an issue or submit a Pull Request.
+
+### Submitting Issues
+* **Bug Reports:** Please specify your HX3 version, whether any other mods are loaded, the steps to reproduce the issue, and any relevant engine output or error logs from the Godot debugger.
+* **Feature Requests:** Open an issue outlining the motivation and how the change aligns with the mod's workflow.
+
+### Pull Request Guidelines
+The mod must remain 100% self-contained in `sols_utils/` and integrate strictly via native lifecycle hooks (`phase_1` / `phase_2`). No modifications to vanilla source files.

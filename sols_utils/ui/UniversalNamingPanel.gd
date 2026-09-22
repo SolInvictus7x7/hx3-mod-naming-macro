@@ -2,20 +2,20 @@ class_name UniversalNamingPanel
 extends Panel
 
 const SCHEMA: Array[Dictionary] = [
-	{"type": "text", "label": "Star names:", "key": "star_prefix", "placeholder": "e.g. SIDVS•IMPERIALE•", "required": true},
+	{"type": "text", "label": "Star names:", "key": "star_prefix", "required": true},
 	{"type": "check", "label": "Enumerate:", "key": "star_enumerate"},
-	{"type": "text", "label": "Abbreviation:", "key": "star_abbrev", "placeholder": "e.g. SID•IMP"},
+	{"type": "text", "label": "Abbreviation:", "key": "star_abbrev"},
 	{"type": "check", "label": "Append to galaxy name:", "key": "star_append_galaxy"},
 	{"type": "sep"},
-	{"type": "text", "label": "Planet names:", "key": "planet_prefix", "placeholder": "e.g. PL•", "required": true},
+	{"type": "text", "label": "Planet names:", "key": "planet_prefix", "required": true},
 	{"type": "check", "label": "Enumerate:", "key": "planet_enumerate"},
 	{"type": "check", "label": "Append to star name:", "key": "planet_append_star"},
 	{"type": "sep"},
-	{"type": "text", "label": "Galaxy names:", "key": "galaxy_prefix", "placeholder": "e.g. GAL•"},
+	{"type": "text", "label": "Galaxy names:", "key": "galaxy_prefix"},
 	{"type": "check", "label": "Enumerate:", "key": "galaxy_enumerate"},
-	{"type": "text", "label": "Abbreviation:", "key": "galaxy_abbrev", "placeholder": "e.g. G•"},
+	{"type": "text", "label": "Abbreviation:", "key": "galaxy_abbrev"},
 	{"type": "sep"},
-	{"type": "text", "label": "Cluster names:", "key": "cluster_prefix", "placeholder": "e.g. CL•"},
+	{"type": "text", "label": "Cluster names:", "key": "cluster_prefix"},
 	{"type": "check", "label": "Enumerate:", "key": "cluster_enumerate"},
 	{"type": "sep"},
 	{"type": "numerals"},
@@ -105,7 +105,6 @@ func build_ui() -> void:
 			"text":
 				var edit := LineEdit.new()
 				edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-				edit.placeholder_text = item.placeholder
 				if item.get("required", false):
 					edit.text_changed.connect(_update_run_button_state)
 				controls[item.key] = edit

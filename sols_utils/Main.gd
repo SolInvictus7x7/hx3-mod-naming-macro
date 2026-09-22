@@ -2,9 +2,9 @@ extends RefCounted
 
 var mod_info: Dictionary = {
 	"name": "Sol's Utils",
-	"version": "0.2.0",
+	"version": "1.0.0",
 	"author": "Sol",
-	"description": "Utility features for Helixteus 3."
+	"description": "Universal Naming Scheme feature."
 }
 
 const UniversalNamingPanelScript = preload("res://sols_utils/ui/UniversalNamingPanel.gd")

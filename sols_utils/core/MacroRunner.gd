@@ -2,6 +2,7 @@ class_name MacroRunner
 extends RefCounted
 
 const NamingRegistryScript = preload("res://sols_utils/core/NamingRegistry.gd")
+const SaveIOScript = preload("res://sols_utils/core/SaveIO.gd")
 
 var is_running: bool = false
 var registry: RefCounted
@@ -45,9 +46,9 @@ func execute(config: RefCounted) -> void:
 			sync_bookmark(game, "cluster", str(c_id), new_cluster_name)
 
 	for c_id: int in len(cluster_data):
-		if not game.obj_exists("Clusters", c_id):
+		if not SaveIOScript.sols_obj_exists(game, "Clusters", c_id):
 			continue
-		var galaxies: Array = game.open_obj("Clusters", c_id)
+		var galaxies: Array = SaveIOScript.load_obj(game, "Clusters", c_id)
 		var cluster_dirty: bool = false
 
 		for g_idx: int in len(galaxies):
@@ -70,9 +71,9 @@ func execute(config: RefCounted) -> void:
 			if yield_step % 25 == 0:
 				await tree.process_frame
 
-			if not game.obj_exists("Galaxies", g_id):
+			if not SaveIOScript.sols_obj_exists(game, "Galaxies", g_id):
 				continue
-			var systems: Array = game.open_obj("Galaxies", g_id)
+			var systems: Array = SaveIOScript.load_obj(game, "Galaxies", g_id)
 			var galaxy_dirty: bool = false
 
 			for s_idx: int in len(systems):
@@ -100,8 +101,8 @@ func execute(config: RefCounted) -> void:
 					await tree.process_frame
 
 				var planets: Array = []
-				if game.obj_exists("Systems", s_id):
-					planets = game.open_obj("Systems", s_id)
+				if SaveIOScript.sols_obj_exists(game, "Systems", s_id):
+					planets = SaveIOScript.load_obj(game, "Systems", s_id)
 				elif s_id == int(game.c_s_g) and not game.planet_data.is_empty():
 					planets = game.planet_data.duplicate(true)
 				else:
@@ -140,13 +141,13 @@ func execute(config: RefCounted) -> void:
 						await tree.process_frame
 
 				if system_dirty:
-					save_obj(game, "Systems", s_id, planets)
+					SaveIOScript.save_obj(game, "Systems", s_id, planets)
 
 			if galaxy_dirty:
-				save_obj(game, "Galaxies", g_id, systems)
+				SaveIOScript.save_obj(game, "Galaxies", g_id, systems)
 
 		if cluster_dirty:
-			save_obj(game, "Clusters", c_id, galaxies)
+			SaveIOScript.save_obj(game, "Clusters", c_id, galaxies)
 
 	registry.save_registry(str(game.c_sv), int(game.c_u))
 	if game.has_method("fn_save_game"):
@@ -162,21 +163,21 @@ func pre_populate_existing_names(game: Node, cluster_data: Array, tree: SceneTre
 	var yield_cnt: int = 0
 	for c_id: int in len(cluster_data):
 		registry.register_existing_name(cluster_data[c_id].get("name", ""))
-		if not game.obj_exists("Clusters", c_id):
+		if not SaveIOScript.sols_obj_exists(game, "Clusters", c_id):
 			continue
-		var galaxies: Array = game.open_obj("Clusters", c_id)
+		var galaxies: Array = SaveIOScript.load_obj(game, "Clusters", c_id)
 		for g_i: Dictionary in galaxies:
 			registry.register_existing_name(g_i.get("name", ""))
 			var g_id: int = g_i.get("id", -1)
-			if g_id < 0 or not game.obj_exists("Galaxies", g_id):
+			if g_id < 0 or not SaveIOScript.sols_obj_exists(game, "Galaxies", g_id):
 				continue
-			var systems: Array = game.open_obj("Galaxies", g_id)
+			var systems: Array = SaveIOScript.load_obj(game, "Galaxies", g_id)
 			for s_i: Dictionary in systems:
 				registry.register_existing_name(s_i.get("name", ""))
 				var s_id: int = s_i.get("id", -1)
-				if s_id < 0 or not game.obj_exists("Systems", s_id):
+				if s_id < 0 or not SaveIOScript.sols_obj_exists(game, "Systems", s_id):
 					continue
-				var planets: Array = game.open_obj("Systems", s_id)
+				var planets: Array = SaveIOScript.load_obj(game, "Systems", s_id)
 				for p_i: Dictionary in planets:
 					registry.register_existing_name(p_i.get("name", ""))
 				yield_cnt += 1
@@ -253,13 +254,3 @@ func sync_hud_display(game: Node) -> void:
 			var clusters: Array = game.u_i.get("cluster_data", [])
 			if int(game.c_c) < len(clusters):
 				name_label.text = clusters[int(game.c_c)].get("name", name_label.text)
-
-func save_obj(game: Node, type: String, id: int, data: Array) -> void:
-	var path: String = "user://%s/Univ%s/%s/%d.hx3" % [game.c_sv, game.c_u, type, id]
-	var temp_path: String = path + "~"
-	var file := FileAccess.open(temp_path, FileAccess.WRITE)
-	if file:
-		file.store_var(data)
-		file.close()
-		DirAccess.copy_absolute(temp_path, path)
-		DirAccess.remove_absolute(temp_path)
